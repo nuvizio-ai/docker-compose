@@ -1,0 +1,15 @@
+[project]
+name = "stripe-billing"
+version = "0.1.0"
+description = "Temporal Stripe Billing Example"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "temporalio",
+    "stripe",
+    "python-dotenv",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
