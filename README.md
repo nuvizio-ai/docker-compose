@@ -132,6 +132,11 @@ Then run the `docker-compose up` command:
 docker-compose up
 ```
 
+
+## Documentation
+
+For a detailed guide on how to choose the right configuration and maintain your Temporal instance, see the **[Operational Strategy & Maintenance Guide](docs/OPERATIONAL_STRATEGY.md)**.
+
 ## Using Temporal docker images in production
 
 These docker-compose setups listed here do not use Temporal Server directly - they utilize [an `auto-setup` script you can read about here](https://docs.temporal.io/blog/auto-setup). You will want to familiarize yourself with this before you deploy to production.

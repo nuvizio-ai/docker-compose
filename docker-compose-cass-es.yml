@@ -8,7 +8,7 @@ services:
     ports:
       - 9042:9042
     volumes:
-      - /var/lib/cassandra
+      - cassandra_data:/var/lib/cassandra
   elasticsearch:
     container_name: temporal-elasticsearch
     environment:
@@ -25,7 +25,7 @@ services:
     ports:
       - 9200:9200
     volumes:
-      - /var/lib/elasticsearch/data
+      - elasticsearch_data:/var/lib/elasticsearch/data
   temporal:
     container_name: temporal
     depends_on:
@@ -74,3 +74,9 @@ networks:
   temporal-network:
     driver: bridge
     name: temporal-network
+
+volumes:
+  cassandra_data:
+    driver: local
+  elasticsearch_data:
+    driver: local

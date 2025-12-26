@@ -39,6 +39,8 @@ services:
         target: 9200
     networks:
       - temporal-network
+    volumes:
+      - elasticsearch_data:/var/lib/elasticsearch/data
 
   postgresql:
     <<: *loki-logging
@@ -50,7 +52,7 @@ services:
     expose:
       - ${POSTGRES_DEFAULT_PORT}
     volumes:
-      - /var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
     networks:
       - temporal-network
 
@@ -343,3 +345,9 @@ networks:
   temporal-network:
     driver: bridge
     name: temporal-network
+
+volumes:
+  postgres_data:
+    driver: local
+  elasticsearch_data:
+    driver: local

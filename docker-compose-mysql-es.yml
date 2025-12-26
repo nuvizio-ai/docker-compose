@@ -16,7 +16,7 @@ services:
     ports:
       - 9200:9200
     volumes:
-      - /var/lib/elasticsearch/data
+      - elasticsearch_data:/var/lib/elasticsearch/data
   mysql:
     container_name: temporal-mysql
     environment:
@@ -27,7 +27,7 @@ services:
     ports:
       - 3306:3306
     volumes:
-      - /var/lib/mysql
+      - mysql_data:/var/lib/mysql
   temporal:
     container_name: temporal
     depends_on:

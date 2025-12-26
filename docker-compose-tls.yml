@@ -49,7 +49,7 @@ services:
       - 5432
     volumes:
       - temporal_tls_pki:/pki
-      - /var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
     restart: on-failure
   temporal:
     container_name: temporal
@@ -122,3 +122,5 @@ networks:
 volumes:
   temporal_tls_pki:
    external: true
+  postgres_data:
+    driver: local
