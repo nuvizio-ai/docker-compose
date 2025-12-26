@@ -109,3 +109,83 @@ If you need one Temporal Cluster to serve different teams, projects, or end-cust
 - [ ] **Liveness/Readiness Probes**: Ensure your orchestrator knows when a service is actually ready to receive gRPC traffic.
 - [ ] **Metrics Scrapying**: Ensure Prometheus is scraping all service ports (8000-8004).
 - [ ] **Logging Driver**: Switch from local files to a centralized logger (Loki/CloudWatch/Datadog) so logs persist after a crash.
+
+---
+
+## 8. Temporal Cron & Overlap Policies
+**Strategy: Managing Backlog vs. Freshness**
+
+If you use Temporal for Cron jobs, you must decide what happens when a new job is scheduled to start while the previous run is still failing or retrying. This is controlled by the **Overlap Policy**:
+
+### 1. `SKIP` (Default)
+*   **Behavior**: If the previous job is still running (or retrying), the new job is dropped.
+*   **Best For**: Cleanups or synchronization tasks where "if I missed one, the next one will fix it."
+
+### 2. `BUFFER_ONE`
+*   **Behavior**: If the previous job is running, exactly **one** new job is queued. Once the current job finishes, that buffered job starts immediately. Any other jobs scheduled during that time are dropped.
+*   **Best For**: Report generation where you want the latest data eventually, but don't want to run 5 identical reports.
+
+### 3. `BUFFER_ALL`
+*   **Behavior**: Every scheduled run is queued.
+*   **Best For**: Critical data processing where every single execution is mandatory (e.g., billing cycles). 
+*   **Warning**: This can lead to a "thundering herd" if several jobs queue up and then all start at once.
+
+### 4. `CANCEL_OTHER`
+*   **Behavior**: When a new job kicks in, it attempts to cancel the old running job.
+*   **Best For**: Long-running simulations or calculations where only the results of the *latest* version matter.
+
+---
+
+---
+
+## 9. Worker Scaling & Priority Management
+**Strategy: How to "Allocate" more resources to High Priority**
+
+Temporal does **not** have a native "Priority" field on tasks. You cannot send a task and mark it as `Priority: 10`. Instead, priority is handled through **Horizontal Scaling** and **Queue Isolation**.
+
+### 1. The "Isolated Lane" Pattern
+*   **Mechanism**: Put `critical_payment` on `critical-queue` and `background_log` on `default-queue`.
+*   **Scaling**: Run 10 workers for the `critical-queue` and 1 worker for the `default-queue`. This "allocates" more CPU/Memory to the priority tasks.
+
+### 2. Auto-Scaling (The "Auto Allocation")
+Temporal exposes a metric called `temporal_task_queue_backlog`. In production (Kubernetes), you use a tool like **KEDA (Kubernetes Event-driven Autoscaling)**:
+*   **Rule**: If `backlog` on `critical-queue` > 10, start more worker Pods instantly.
+*   **Result**: The system "auto-allocates" resources exactly where the demand is.
+
+### 3. Tuning Worker Capacity
+Inside a single Python worker, you can control how many tasks it handles at once:
+```python
+worker = Worker(
+    client,
+    task_queue="my-queue",
+    max_concurrent_activities=100, # Adjust based on CPU/RAM
+    max_task_queue_activities_per_second=50, # Rate limiting
+)
+```
+
+---
+
+---
+
+## 10. Real-time Suitability & Latency
+**Strategy: When is Temporal "Too Slow"?**
+
+Temporal is a **highly reliable** system, but it is not a **high-frequency/low-latency** system (like HFT or gaming engines). Because Temporal persists every event to the database to ensure reliability, there is unavoidable latency overhead.
+
+### 1. The "Persistence Tax"
+*   **Latency**: Every `execute_activity` or `start_workflow` call requires at least 2-3 round trips to the database (Postgres/Cassandra) and a context switch to a Worker.
+*   **Typical Overhead**: Expect **20ms - 100ms** of overhead per step in your workflow.
+*   **Soft Real-time**: Temporal is great for "Soft Real-time" (UI feedback, order processing, banking) where sub-second response is enough.
+*   **Hard Real-time**: Temporal is **not suitable** for "Hard Real-time" (microsecond requirements, industrial control systems, or high-speed packet processing).
+
+### 2. The Decision Matrix
+| Use Case | Recommended? | Why? |
+| :--- | :--- | :--- |
+| **User Sign-up Flow** | ✅ Yes | Reliability is more important than 50ms of speed. |
+| **Financial Transaction** | ✅ Yes | Correctness and state recovery are non-negotiable. |
+| **Chat Messaging** | ⚠️ **Hybrid** | Use Direct (WebSockets) for **Display**, use Temporal for **Moderation, Archival, and Push Notifications**. |
+| **Search Autocomplete** | ❌ No | Requires <10ms response; use a direct cache (Redis). |
+
+---
+
+## 11. Final Production Checklist
