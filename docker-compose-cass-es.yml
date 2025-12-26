@@ -1,4 +1,3 @@
-version: "3.5"
 services:
   cassandra:
     container_name: temporal-cassandra
